@@ -933,7 +933,7 @@ def process_resnet_kmeans(
     patch_size=16,
     downsample_enabled=False,
     downsample_size=256,
-    backbone_model="resnet50",
+    backbone_model="resnet18",
     feature_layer="avgpool"
 ):
     start_time = time.time()
@@ -941,8 +941,15 @@ def process_resnet_kmeans(
     image = load_image_as_array(image_file)
     original_width, original_height = image.size
 
+    # Auto-protection for high-resolution images
+    max_side = max(image.size)
+    auto_downsample_applied = False
+
     if downsample_enabled:
         image = downsample_image(image, downsample_size)
+    elif max_side > 768:
+        image = downsample_image(image, 256)
+        auto_downsample_applied = True
 
     processed_width, processed_height = image.size
 
@@ -953,9 +960,13 @@ def process_resnet_kmeans(
     if len(patches) == 0:
         raise ValueError("No valid patches could be extracted from the image.")
 
-    # CPU-friendly tuning:
-    # - smaller batch if image count is huge
-    # - optionally use lower input_size for speed
+    # Limit patches for CPU safety
+    max_patches = 1500
+    if len(patches) > max_patches:
+        selected_indices = np.linspace(0, len(patches) - 1, max_patches, dtype=int)
+        patches = [patches[i] for i in selected_indices]
+        patch_positions = [patch_positions[i] for i in selected_indices]
+
     resnet_input_size = 160
     feature_batch_size = 32
 
@@ -966,7 +977,6 @@ def process_resnet_kmeans(
         input_size=resnet_input_size,
     )
 
-    # Normalize features for more stable clustering
     feature_norms = np.linalg.norm(features, axis=1, keepdims=True)
     feature_norms[feature_norms == 0] = 1.0
     features = features / feature_norms
@@ -979,10 +989,12 @@ def process_resnet_kmeans(
 
     labels = kmeans.fit_predict(features)
 
-    # Average RGB per patch cluster for visualization
-    patch_arrays = np.array([np.array(patch).mean(axis=(0, 1)) for patch in patches], dtype=np.float32)
-    centers_rgb = []
+    patch_arrays = np.array(
+        [np.array(patch).mean(axis=(0, 1)) for patch in patches],
+        dtype=np.float32
+    )
 
+    centers_rgb = []
     for cluster_id in range(n_clusters):
         cluster_patch_colors = patch_arrays[labels == cluster_id]
         if len(cluster_patch_colors) == 0:
@@ -1102,6 +1114,8 @@ def process_resnet_kmeans(
             "n_clusters": n_clusters,
             "feature_batch_size": feature_batch_size,
             "resnet_input_size": resnet_input_size,
+            "auto_downsample_applied": auto_downsample_applied,
+            "max_patches_limit": max_patches,
         },
         "metrics": metrics,
         "pixel_scatter_sample": pixel_scatter_sample,
@@ -1114,7 +1128,7 @@ def process_resnet_gmm(
     patch_size=16,
     downsample_enabled=False,
     downsample_size=256,
-    backbone_model="resnet50",
+    backbone_model="resnet18",
     feature_layer="avgpool"
 ):
     start_time = time.time()
@@ -1122,8 +1136,14 @@ def process_resnet_gmm(
     image = load_image_as_array(image_file)
     original_width, original_height = image.size
 
+    max_side = max(image.size)
+    auto_downsample_applied = False
+
     if downsample_enabled:
         image = downsample_image(image, downsample_size)
+    elif max_side > 768:
+        image = downsample_image(image, 256)
+        auto_downsample_applied = True
 
     processed_width, processed_height = image.size
 
@@ -1134,8 +1154,13 @@ def process_resnet_gmm(
     if len(patches) == 0:
         raise ValueError("No valid patches could be extracted from the image.")
 
-    # CPU-friendly defaults
-    resnet_input_size = 224
+    max_patches = 1500
+    if len(patches) > max_patches:
+        selected_indices = np.linspace(0, len(patches) - 1, max_patches, dtype=int)
+        patches = [patches[i] for i in selected_indices]
+        patch_positions = [patch_positions[i] for i in selected_indices]
+
+    resnet_input_size = 160
     feature_batch_size = 32
 
     features = extract_resnet_features_from_patches(
@@ -1145,7 +1170,6 @@ def process_resnet_gmm(
         input_size=resnet_input_size,
     )
 
-    # Normalize features for more stable clustering
     feature_norms = np.linalg.norm(features, axis=1, keepdims=True)
     feature_norms[feature_norms == 0] = 1.0
     features = features / feature_norms
@@ -1159,7 +1183,6 @@ def process_resnet_gmm(
 
     labels = gmm.fit_predict(features)
 
-    # Average RGB color for each cluster, only for visualization
     patch_arrays = np.array(
         [np.array(patch).mean(axis=(0, 1)) for patch in patches],
         dtype=np.float32
@@ -1286,6 +1309,8 @@ def process_resnet_gmm(
             "covariance_type": covariance_type,
             "feature_batch_size": feature_batch_size,
             "resnet_input_size": resnet_input_size,
+            "auto_downsample_applied": auto_downsample_applied,
+            "max_patches_limit": max_patches,
         },
         "metrics": metrics,
         "pixel_scatter_sample": pixel_scatter_sample,
@@ -1296,7 +1321,7 @@ def process_dec(
     n_clusters=5,
     latent_dim=32,
     patch_size=16,
-    max_epochs=20,
+    max_epochs=10,
     downsample_enabled=False,
     downsample_size=256
 ):
@@ -1305,14 +1330,26 @@ def process_dec(
     image = load_image_as_array(image_file)
     original_width, original_height = image.size
 
+    max_side = max(image.size)
+    auto_downsample_applied = False
+
     if downsample_enabled:
         image = downsample_image(image, downsample_size)
+    elif max_side > 768:
+        image = downsample_image(image, 256)
+        auto_downsample_applied = True
 
     processed_width, processed_height = image.size
 
     patches, patch_positions, image_width, image_height = image_to_patches(
         image, patch_size=patch_size
     )
+
+    max_patches = 1200
+    if len(patches) > max_patches:
+        selected_indices = np.linspace(0, len(patches) - 1, max_patches, dtype=int)
+        patches = [patches[i] for i in selected_indices]
+        patch_positions = [patch_positions[i] for i in selected_indices]
 
     if len(patches) == 0:
         raise ValueError("No valid patches could be extracted from the image.")
@@ -1581,6 +1618,8 @@ def process_dec(
             "batch_size": batch_size,
             "pretrain_epochs": pretrain_epochs,
             "dec_epochs": dec_epochs,
+            "auto_downsample_applied": auto_downsample_applied,
+            "max_patches_limit": max_patches,
         },
         "metrics": metrics,
         "pixel_scatter_sample": pixel_scatter_sample,
