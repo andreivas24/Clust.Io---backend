@@ -35,6 +35,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".up.railway.app",
+    "healthcheck.railway.app",
 ]
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
