@@ -31,18 +31,14 @@ SECRET_KEY = 'django-insecure-seq(v!_s82l24k=h=6z%6os&p!e1s7^zh0&eybew6*l5-l$it3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-# ALLOWED_HOSTS = [
-#     "127.0.0.1",
-#     "localhost",
-# ]
-
-ALLOWED_HOSTS = ["*"]
-
-render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
-if render_hostname:
-    ALLOWED_HOSTS.append(render_hostname)
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    ".up.railway.app",
+]
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
 
 CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
 CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
