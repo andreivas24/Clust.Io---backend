@@ -11,7 +11,7 @@ from api.views.user_study_views import CreateUserStudySessionView, SubmitUserRat
 from api.health import healthz
 
 urlpatterns = [
-    path("healthz", healthz),
+    path("healthz/", healthz),
     path('admin/', admin.site.urls),
     path('api/user/register/', UserCreate.as_view(), name='user-create'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
