@@ -65,9 +65,6 @@ class RunAlgorithmView(APIView):
             "agglomerative",
             "birch",
             "dbscan",
-            "resnet_kmeans",
-            "resnet_gmm",
-            "dec",
         ]
 
         if algorithm_id not in supported_algorithms:

@@ -1,18 +1,12 @@
-from ..algorithms import process_agglomerative, process_bgmm, process_birch, process_dbscan, process_dec, process_gmm, process_kmeans, process_mini_batch_kmeans, process_resnet_gmm, process_resnet_kmeans
-
-
 def run_algorithm_dispatch(algorithm_id, image_file, params):
     from ..algorithms import (
         process_agglomerative,
         process_bgmm,
         process_birch,
         process_dbscan,
-        process_dec,
         process_gmm,
         process_kmeans,
         process_mini_batch_kmeans,
-        process_resnet_gmm,
-        process_resnet_kmeans,
     )
 
     if algorithm_id == "kmeans":
@@ -75,40 +69,6 @@ def run_algorithm_dispatch(algorithm_id, image_file, params):
             downsample_size=params["downsample_size"],
         )
 
-    elif algorithm_id == "resnet_kmeans":
-        return process_resnet_kmeans(
-            image_file=image_file,
-            n_clusters=params["n_clusters"],
-            patch_size=params["patch_size"],
-            downsample_enabled=params["downsample_enabled"],
-            downsample_size=params["downsample_size"],
-            backbone_model=params.get("backbone_model", "resnet50"),
-            feature_layer=params.get("feature_layer", "avgpool"),
-        )
-
-    elif algorithm_id == "resnet_gmm":
-        return process_resnet_gmm(
-            image_file=image_file,
-            n_components=params["n_clusters"],
-            covariance_type=params["gmm_covariance_type"],
-            patch_size=params["patch_size"],
-            downsample_enabled=params["downsample_enabled"],
-            downsample_size=params["downsample_size"],
-            backbone_model=params.get("backbone_model", "resnet50"),
-            feature_layer=params.get("feature_layer", "avgpool"),
-        )
-
-    elif algorithm_id == "dec":
-        return process_dec(
-            image_file=image_file,
-            n_clusters=params["n_clusters"],
-            latent_dim=params.get("latent_dim", 32),
-            patch_size=params["patch_size"],
-            max_epochs=params["max_epochs"],
-            downsample_enabled=params["downsample_enabled"],
-            downsample_size=params["downsample_size"],
-        )
-
     elif algorithm_id == "bgmm":
         return process_bgmm(
             image_file=image_file,
@@ -128,12 +88,9 @@ def run_k_search_dispatch(algorithm_id, image_file, params, k_value):
         process_agglomerative,
         process_bgmm,
         process_birch,
-        process_dec,
         process_gmm,
         process_kmeans,
         process_mini_batch_kmeans,
-        process_resnet_gmm,
-        process_resnet_kmeans,
     )
 
     if algorithm_id == "kmeans":
@@ -182,40 +139,6 @@ def run_k_search_dispatch(algorithm_id, image_file, params, k_value):
             threshold=params["birch_threshold"],
             branching_factor=params["birch_branching_factor"],
             n_clusters=k_value,
-            downsample_enabled=params["downsample_enabled"],
-            downsample_size=params["downsample_size"],
-        )
-
-    elif algorithm_id == "resnet_kmeans":
-        return process_resnet_kmeans(
-            image_file=image_file,
-            n_clusters=k_value,
-            patch_size=params["patch_size"],
-            downsample_enabled=params["downsample_enabled"],
-            downsample_size=params["downsample_size"],
-            backbone_model=params.get("backbone_model", "resnet50"),
-            feature_layer=params.get("feature_layer", "avgpool"),
-        )
-
-    elif algorithm_id == "resnet_gmm":
-        return process_resnet_gmm(
-            image_file=image_file,
-            n_components=k_value,
-            covariance_type=params["gmm_covariance_type"],
-            patch_size=params["patch_size"],
-            downsample_enabled=params["downsample_enabled"],
-            downsample_size=params["downsample_size"],
-            backbone_model=params.get("backbone_model", "resnet50"),
-            feature_layer=params.get("feature_layer", "avgpool"),
-        )
-
-    elif algorithm_id == "dec":
-        return process_dec(
-            image_file=image_file,
-            n_clusters=k_value,
-            latent_dim=params.get("latent_dim", 32),
-            patch_size=params["patch_size"],
-            max_epochs=params["max_epochs"],
             downsample_enabled=params["downsample_enabled"],
             downsample_size=params["downsample_size"],
         )
