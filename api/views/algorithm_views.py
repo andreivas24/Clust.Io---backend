@@ -3,7 +3,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
-from ..algorithms import process_agglomerative, process_bgmm, process_birch, process_dbscan, process_dec, process_gmm, process_kmeans, process_mini_batch_kmeans, process_resnet_gmm, process_resnet_kmeans
 from ..parameter_suggester import analyze_image_complexity, suggest_parameters_from_analysis
 from ..meta_selector import select_best_k_candidate, select_best_dbscan_candidate
 from ..services.algorithm_dispatcher import run_algorithm_dispatch, run_k_search_dispatch, run_dbscan_search_dispatch
@@ -58,158 +57,53 @@ class RunAlgorithmView(APIView):
         if not algorithm_id:
             return Response({"detail": "algorithm_id is required."}, status=400)
 
-        if algorithm_id not in ["kmeans", "mini_batch_kmeans", "gmm", "bgmm", "agglomerative", "birch", "dbscan", "resnet_kmeans", "resnet_gmm", "dec"]:
+        supported_algorithms = [
+            "kmeans",
+            "mini_batch_kmeans",
+            "gmm",
+            "bgmm",
+            "agglomerative",
+            "birch",
+            "dbscan",
+            "resnet_kmeans",
+            "resnet_gmm",
+            "dec",
+        ]
+
+        if algorithm_id not in supported_algorithms:
             return Response(
                 {"detail": f"Algorithm '{algorithm_id}' is not implemented yet."},
                 status=400
             )
 
         try:
-            if algorithm_id == "kmeans":
-                n_clusters = int(request.data.get("n_clusters", 5))
-                max_iter = int(request.data.get("max_iter", 300))
-                init = request.data.get("init", "k-means++")
+            params = {
+                "n_clusters": int(request.data.get("n_clusters", 5)),
+                "max_iter": int(request.data.get("max_iter", 300)),
+                "init": request.data.get("init", "k-means++"),
+                "batch_size": int(request.data.get("batch_size", 256)),
+                "gmm_covariance_type": request.data.get("covariance_type", "full"),
+                "agglomerative_linkage": request.data.get("linkage", "ward"),
+                "agglomerative_metric": request.data.get("metric", "euclidean"),
+                "birch_threshold": float(request.data.get("threshold", 0.5)),
+                "birch_branching_factor": int(request.data.get("branching_factor", 50)),
+                "dbscan_eps": float(request.data.get("eps", 5.0)),
+                "dbscan_min_samples": int(request.data.get("min_samples", 5)),
+                "dbscan_metric": request.data.get("metric", "euclidean"),
+                "patch_size": int(request.data.get("patch_size", 16)),
+                "latent_dim": int(request.data.get("latent_dim", 32)),
+                "max_epochs": int(request.data.get("max_epochs", 20)),
+                "backbone_model": request.data.get("backbone_model", "resnet50"),
+                "feature_layer": request.data.get("feature_layer", "avgpool"),
+                "downsample_enabled": downsample_enabled,
+                "downsample_size": downsample_size,
+            }
 
-                result = process_kmeans(
-                    image_file=image,
-                    n_clusters=n_clusters,
-                    max_iter=max_iter,
-                    init=init,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size
-                )
-
-            elif algorithm_id == "mini_batch_kmeans":
-                n_clusters = int(request.data.get("n_clusters", 5))
-                batch_size = int(request.data.get("batch_size", 256))
-                max_iter = int(request.data.get("max_iter", 100))
-
-                result = process_mini_batch_kmeans(
-                    image_file=image,
-                    n_clusters=n_clusters,
-                    batch_size=batch_size,
-                    max_iter=max_iter,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size
-                )
-
-            elif algorithm_id == "gmm":
-                n_components = int(request.data.get("n_components", 5))
-                covariance_type = request.data.get("covariance_type", "full")
-                max_iter = int(request.data.get("max_iter", 100))
-                
-
-                result = process_gmm(
-                    image_file=image,
-                    n_components=n_components,
-                    covariance_type=covariance_type,
-                    max_iter=max_iter,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                )
-
-            elif algorithm_id == "agglomerative":
-                n_clusters = int(request.data.get("n_clusters", 5))
-                linkage = request.data.get("linkage", "ward")
-                metric = request.data.get("metric", "euclidean")
-
-                result = process_agglomerative(
-                    image_file=image,
-                    n_clusters=n_clusters,
-                    linkage=linkage,
-                    metric=metric,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                )
-
-            elif algorithm_id == "birch":
-                threshold = float(request.data.get("threshold", 0.5))
-                branching_factor = int(request.data.get("branching_factor", 50))
-                n_clusters = int(request.data.get("n_clusters", 5))
-
-                result = process_birch(
-                    image_file=image,
-                    threshold=threshold,
-                    branching_factor=branching_factor,
-                    n_clusters=n_clusters,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                )
-
-            elif algorithm_id == "dbscan":
-                eps = float(request.data.get("eps", 5.0))
-                min_samples = int(request.data.get("min_samples", 5))
-                metric = request.data.get("metric", "euclidean")
-
-                result = process_dbscan(
-                    image_file=image,
-                    eps=eps,
-                    min_samples=min_samples,
-                    metric=metric,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                )
-
-            elif algorithm_id == "resnet_kmeans":
-                n_clusters = int(request.data.get("n_clusters", 5))
-                patch_size = int(request.data.get("patch_size", 16))
-                backbone_model = request.data.get("backbone_model", "resnet50")
-                feature_layer = request.data.get("feature_layer", "avgpool")
-
-                result = process_resnet_kmeans(
-                    image_file=image,
-                    n_clusters=n_clusters,
-                    patch_size=patch_size,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                    backbone_model=backbone_model,
-                    feature_layer=feature_layer,
-                )
-
-            elif algorithm_id == "resnet_gmm":
-                n_components = int(request.data.get("n_components", 5))
-                covariance_type = request.data.get("covariance_type", "full")
-                patch_size = int(request.data.get("patch_size", 16))
-                backbone_model = request.data.get("backbone_model", "resnet50")
-                feature_layer = request.data.get("feature_layer", "avgpool")
-
-                result = process_resnet_gmm(
-                    image_file= image,
-                    n_components=n_components,
-                    covariance_type=covariance_type,
-                    patch_size=patch_size,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                    backbone_model=backbone_model,
-                    feature_layer=feature_layer,
-                )
-
-            elif algorithm_id == "dec":
-                n_clusters = int(request.data.get("n_clusters", 5))
-                latent_dim = int(request.data.get("latent_dim", 32))
-                patch_size = int(request.data.get("patch_size", 16))
-                max_epochs = int(request.data.get("max_epochs", 50))
-
-                result = process_dec(
-                    image_file=image,
-                    n_clusters=n_clusters,
-                    latent_dim=latent_dim,
-                    patch_size=patch_size,
-                    max_epochs=max_epochs,
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                )
-
-            elif algorithm_id == "bgmm":
-                result = process_bgmm(
-                    image_file=image,
-                    n_components=int(request.data.get("n_components", 10)),
-                    covariance_type=request.data.get("covariance_type", "diag"),
-                    weight_concentration_prior_type=request.data.get("weight_concentration_prior_type", "dirichlet_process"),
-                    max_iter=int(request.data.get("max_iter", 200)),
-                    downsample_enabled=downsample_enabled,
-                    downsample_size=downsample_size,
-                )
+            result = run_algorithm_dispatch(
+                algorithm_id=algorithm_id,
+                image_file=image,
+                params=params,
+            )
 
             return Response({
                 "algorithm": algorithm_id,
@@ -233,7 +127,7 @@ class RunAlgorithmView(APIView):
 
         except ValueError as exc:
             return Response({"detail": f"Invalid numeric parameter values: {str(exc)}"}, status=400)
-        
+
         except Exception as exc:
             return Response({"detail": f"Error while running algorithm: {str(exc)}"}, status=500)
         
