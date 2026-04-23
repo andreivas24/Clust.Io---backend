@@ -8,10 +8,8 @@ from api.views.algorithm_views import RunAlgorithmView, SuggestBatchParametersVi
 from api.views.auth_views import ForgotPasswordView, ResetPasswordView, UploadProfileImageView, UserCreate, UserDashboardView, UserDetailView, google_login_callback, validate_google_token
 from api.views.benchmark_views import BenchmarkSessionDetailView, BenchmarkSessionListView, DatasetManifestView, RunBenchmarkView, RunDatasetBenchmarkView
 from api.views.user_study_views import CreateUserStudySessionView, SubmitUserRatingView, UserStudyAnalyticsView, UserStudyDetailView, UserStudyRatingsView
-from api.health import healthz
 
 urlpatterns = [
-    path("healthz", healthz),
     path('admin/', admin.site.urls),
     path('api/user/register/', UserCreate.as_view(), name='user-create'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

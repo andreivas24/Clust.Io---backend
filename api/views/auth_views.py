@@ -7,7 +7,6 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
 
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -80,8 +79,7 @@ class ForgotPasswordView(APIView):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
-        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
-        reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
+        reset_link = f"http://localhost:5173/reset-password/{uid}/{token}/"
 
         send_mail(
             subject="Reset your Clust.io password",
@@ -157,25 +155,21 @@ def google_login_callback(request):
 
     social_account = social_accounts.first()
 
-    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
-
     if not social_account:
         print("No social account for user:", user)
-        return redirect(f"{frontend_url}/login/callback/?error=NoSocialAccount")
-
+        return redirect('http://localhost:5173/login/callback/?error=NoSocialAccount')
+    
     token = SocialToken.objects.filter(account=social_account, account__provider='google').first()
 
     if token:
-        print("Google token found:", token.token)
+        print('Google token found:', token.token)
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
-        return redirect(
-            f"{frontend_url}/login/callback/?access_token={access_token}&refresh_token={refresh_token}"
-        )
+        return redirect(f'http://localhost:5173/login/callback/?access_token={access_token}&refresh_token={refresh_token}')
     else:
-        print("No Google token found for user:", user)
-        return redirect(f"{frontend_url}/login/callback/?error=NoGoogleToken")
+        print('No Google token found for user:', user)
+        return redirect(f'http://localhost:5173/login/callback/?error=NoGoogleToken')
     
 @csrf_exempt
 def validate_google_token(request):
